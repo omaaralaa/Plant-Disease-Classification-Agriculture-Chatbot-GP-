@@ -246,5 +246,5 @@ if st.session_state["authenticated"]:
     if image_data:
         st.subheader("Classificatio History")
         st.table([{"Classification Result": row[0], "Recommended Advice": row[1]} for row in image_data])        
-    if not chat_data and image_data:
+    if not chat_data and not image_data:
         st.write("No history found for this user.")
