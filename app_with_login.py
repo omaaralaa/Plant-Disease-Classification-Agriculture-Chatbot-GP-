@@ -9,10 +9,27 @@ import io
 def init_db():
     conn = sqlite3.connect("users.db")
     cursor = conn.cursor()
+    
     # Create the users table if it doesn't exist
     cursor.execute('''CREATE TABLE IF NOT EXISTS users (
                         username TEXT PRIMARY KEY, 
                         password TEXT)''')
+    
+    # Create the chat_history table if it doesn't exist
+    cursor.execute('''CREATE TABLE IF NOT EXISTS chat_history (
+                        chat_id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                        chat_input TEXT,
+                        chat_output TEXT,
+                        username TEXT REFERENCES users(username))''')
+    
+    # Create the image_history table if it doesn't exist
+    cursor.execute('''CREATE TABLE IF NOT EXISTS image_history (
+                        image_id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                        image BLOB,
+                        image_classification_result TEXT, 
+                        recommendation TEXT,
+                        username TEXT REFERENCES users(username))''')
+    
     conn.commit()
     return conn
 
@@ -50,20 +67,10 @@ def login_user(username, password):
     else:
         return False
 
-def chat_history():
-    conn_hist = sqlite3.connect("users.db")
-    cursor = conn_hist.cursor()
-    cursor.execute('''CREATE TABLE IF NOT EXISTS chat_history (
-                    chat_id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                    chat_input TEXT,
-                    chat_output TEXT,
-                    username TEXT REFERENCES users(username))''')
-    conn_hist.commit()
-    return conn_hist
 
 # Function to save history
 def save_chat_history(chat_input, chat_output, username):
-    conn = chat_history()
+    conn = sqlite3.connect("users.db")
     cursor = conn.cursor()
     cursor.execute("""
         INSERT INTO chat_history (chat_input, chat_output, username)
@@ -72,20 +79,9 @@ def save_chat_history(chat_input, chat_output, username):
     conn.commit()
     conn.close()
 
-def image_history():
-    conn_hist = sqlite3.connect("users.db")
-    cursor = conn_hist.cursor()
-    cursor.execute('''CREATE TABLE IF NOT EXISTS image_history (
-                    image_id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                    image BLOB,
-                    image_classification_result TEXT, 
-                    recommendation TEXT,
-                    username TEXT REFERENCES users(username))''')
-    conn_hist.commit()
-    return conn_hist
 
 def save_image_history(image, image_classification_result, recommendation, username):
-    conn = image_history()  # Assuming this function establishes a database connection
+    conn= sqlite3.connect("users.db")  # Assuming this function establishes a database connection
     cursor = conn.cursor()
     cursor.execute("""
         INSERT INTO image_history (image, image_classification_result, recommendation, username)
@@ -176,9 +172,11 @@ if st.session_state["authenticated"]:
 
     # Image upload section
     st.header("Plant Disease Classification")
+    if "processed_image" not in st.session_state:
+        st.session_state["processed_image"] = None
     uploaded_file = st.file_uploader("Upload an image of a plant for disease classification:", type=["jpg", "jpeg", "png"])
-
-    if uploaded_file is not None:
+    if uploaded_file is not None and st.session_state["processed_image"] != uploaded_file.name:
+        st.session_state["processed_image"] = uploaded_file.name 
         # Display the uploaded image
         img = Image.open(uploaded_file)
         uploaded_img=img
@@ -239,15 +237,16 @@ if st.session_state["authenticated"]:
         WHERE username = ?''', (st.session_state['username'],))
     image_data=cursor.fetchall()    
     conn.close()
-
+    
+    if (not chat_data) and (not image_data):
+        st.write("No history found for this user.")
     if chat_data:
         st.subheader("Chat History")
         st.table([{"Question": row[0], "Answer": row[1]} for row in chat_data])
     if image_data:
         st.subheader("Classification History")
         st.table([{"Classification Result": row[0], "Recommended Advice": row[1]} for row in image_data])        
-    if not chat_data and not image_data:
-        st.write("No history found for this user.")
+
     logout= st.button("Logout")
     if logout:
         st.session_state["authenticated"] = False
