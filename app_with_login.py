@@ -175,6 +175,8 @@ if st.session_state["authenticated"]:
     if "processed_image" not in st.session_state:
         st.session_state["processed_image"] = None
     uploaded_file = st.file_uploader("Upload an image of a plant for disease classification:", type=["jpg", "jpeg", "png"])
+    if uploaded_file:
+        st.image(Image.open(uploaded_file), caption="Uploaded Image")
     if uploaded_file is not None and st.session_state["processed_image"] != uploaded_file.name:
         st.session_state["processed_image"] = uploaded_file.name 
         # Display the uploaded image
@@ -183,14 +185,13 @@ if st.session_state["authenticated"]:
         img = transform(img)
         # Make prediction
         predicted_class = predict_image(img, model)
-        st.image(uploaded_img, caption="Uploaded Image")
         st.success(f"Classification Result: {predicted_class}")
         st.success(f'Recommended advice: {advises[predicted_class]}')
         uploaded_img.save(io.BytesIO(), format=uploaded_img.format)
         img_binary = io.BytesIO().getvalue()
         save_image_history(img_binary,predicted_class,advises[predicted_class],username=st.session_state['username'])
     # Set the model name
-    model = "agri_qa_model"
+    model = "agri-qa-model-new"
 
     # Title of the app
     st.header("Plant Care Q&A Chatbot")
